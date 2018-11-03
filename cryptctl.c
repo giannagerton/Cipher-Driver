@@ -17,13 +17,15 @@ int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num,
 			retval = file_num;
 			file_num++;
 			break;
+		case IOCTL_DESTROY:
+			int id;
+			id  = (int)ioctl_param; // encrypt descrypt id
+			// delete the files
+			ret_val = 0;
+			break; 
 	}
 	return retval;
 }
 			
-
-
-
-
 
 

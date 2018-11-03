@@ -6,7 +6,8 @@
 
 #define CRYPT_IO_MAGIC 100
 
-#define IO_CREATE _IOWR(CRYPT_IO_MAGIC, 1, int) // not sure this is right
+#define IOCTL_CREATE _IOWR(CRYPT_IO_MAGIC, 1, int) // not sure this is right
+#define IOCTL_DESTROY _IOR(CRYPT_IO_MAGIC, 2, int)
 
 #endif
 
