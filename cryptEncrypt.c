@@ -3,9 +3,17 @@
 #include <linux/module.h>
 #include <asm/uaccess.h>
 
+#define DEVICE_NAME "crypt_encrypt"
+
 static int TEXT_LENGTH = 50;
 
 static char text[TEXT_LENGTH];
+
+static int device_init(void) {
+	int retval = 0;
+	ret_val = module_register_chrdev(MAJOR_NUM, DEVICE_NAME, &Fops);
+	
+}
 
 int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num, unsigned long ioctl_param) {
 	int i;
@@ -18,7 +26,7 @@ int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num,
 			temp++;
 			i++;
 		}
-		cryptEncrypt_write(file, (char*)ioctl_param, i, 0);
+		device_write(file, (char*)ioctl_param, i, 0);
 		break;
 	}
 	return 0;
