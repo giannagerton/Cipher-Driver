@@ -1,4 +1,3 @@
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <asm/uaccess.h>
@@ -6,6 +5,23 @@
 static int TEXT_LENGTH = 50;
 
 static char text[TEXT_LENGTH];
+
+int device_open(struct inode *inode, struct file* filp){
+	
+	if(down_interruptible(&virtual_device.sem) != 0){
+		printk(KERN_ALERT "could not lock device during open");
+		return -1;
+	}
+	
+	printk(KERN_INFO "opened device");
+	return 0;
+}
+
+int device_close(struct inode *inode, struct file *filp){
+	up(&virutal_device.sem);
+	printk(KERN_INFO "closed device");
+	return 0;
+}
 
 int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num, unsigned long ioctl_param) {
 	int i;
