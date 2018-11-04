@@ -7,6 +7,8 @@
 
 #define DEVICE_NAME "crypt_encrypt"
 
+// notes: look up cdev, device_create (seems like its used to create multiple encrypt/decrypt envices; might be ab;e to use from cryptctl
+
 static int TEXT_LENGTH = 50;
 
 static char text[TEXT_LENGTH];
@@ -15,6 +17,7 @@ static int device_init(void) {
 	int retval = 0;
 	ret_val = module_register_chrdev(MAJOR_NUM, DEVICE_NAME, &Fops);
 }	
+
 
 int device_open(struct inode *inode, struct file* filp){
 	
