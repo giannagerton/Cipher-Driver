@@ -1,20 +1,34 @@
 #include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/device.h>
 #include <linux/module.h>
-#include <asm/uaccess.h>
+#include <linux/kernel.h>
+#include <linux/cdev>
+#include <linux/semaphore.h>
+#include <linux/device.h>
+#include <linux/moduleparam.h>
+#include <linux/uaccess.h>
 
 #define DEVICE_NAME "crypt_encrypt"
+#define CLASS_NAME "cryptctl"
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Parth Patel, Gianna Gerton, Niles Ball");
 
 static int TEXT_LENGTH = 50;
 
 static char text[TEXT_LENGTH];
+struct cdev *mycdev;
+int major_number;
+dev_t = dev_num;
 
 static int device_init(void) {
+
 	int retval = 0;
-	ret_val = module_register_chrdev(MAJOR_NUM, DEVICE_NAME, &Fops);
+	retval = alloc_chrdev_region(&dev_num,0,1, DEVICE_NAME);
+	
+
 }	
+
 
 int device_open(struct inode *inode, struct file* filp){
 	
