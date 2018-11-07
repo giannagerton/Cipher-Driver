@@ -14,6 +14,8 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Parth Patel, Gianna Gerton, Niles Ball");
 
+// notes: look up cdev, device_create (seems like its used to create multiple encrypt/decrypt envices; might be ab;e to use from cryptctl
+
 static int TEXT_LENGTH = 50;
 
 static char text[TEXT_LENGTH];
