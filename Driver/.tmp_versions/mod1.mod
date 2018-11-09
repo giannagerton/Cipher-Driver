@@ -1,3 +1,3 @@
-/home/superuser/Driver/mod1.ko
-/home/superuser/Driver/mod1.o
+/home/superuser/Cipher-Driver/Driver/mod1.ko
+/home/superuser/Cipher-Driver/Driver/mod1.o
 
