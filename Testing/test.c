@@ -17,81 +17,74 @@
 #include "cryptctl.h"
 
 #define CRYPTCTL_BLOCK_SIZE 512
-
 #define CRYPTCTL_BUFFER_SIZE 4000
-
-#define ENCRYPT "cryptEncrypt"
-#define DECRYPT "cryptDecrypt"
 
 MODULE_LICENSE("GPL");
 
-#define DEVICE_NAME "cryptctl"
 struct cryptctl_dev {
-	unsigned char *data;
-	char key[100];
+	char message[MESSAGE_SIZE];
+	char key[KEY_SIZE];
 	unsigned long buffer_size; 
 	unsigned long block_size;  
-	struct mutex cryptctl_mutex; 
 	struct cdev cdev;
 };
 
 
 /* parameters */
 static int cryptctl_ndevices = 101;
-
 static unsigned int cryptctl_major = 0;
 static struct cryptctl_dev *cryptctl_devices = NULL;
 static struct class *cryptctl_class = NULL;
-
 static int id;
 
-static int device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param);
+
+
+long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param);
+static int create_crypt_device(int cryptbool, int pair_minor);
+static void cryptctl_destroy_device(struct cryptctl_dev *dev, int filenum);
+static void cryptctl_cleanup_module(int filenum);
 
 struct file_operations cryptctl_fops = {
-	.owner =    THIS_MODULE,
-	.ioctl =    device_ioctl
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = device_ioctl
 };
 
-static int create_crypt_device(int cryptbool, int pair_minor);
-static void cryptctl_cleanup_model(int devices_to_destroy);
-
-static int
+int
 create_device_pair(void)
 {
-	int pair_minor, retval, cryptbool;
+	int filenum, retval, cryptbool;
 	retval = 0;
-	pair_minor = (id * 2) + 1;
+	filenum = (id * 2) + 1;
 	cryptbool = 0;
-	if ((retval = create_crypt_device(cryptbool, pair_minor)) != 0) {
+	if ((retval = create_crypt_device(cryptbool, filenum)) != 0) {
 		goto err;
 	}
 	
-	pair_minor++;
+	filenum++;
 	cryptbool = 1;
-	if ((retval = create_crypt_device(cryptbool, pair_minor)) != 0) {
+	if ((retval = create_crypt_device(cryptbool, filenum)) != 0) {
 		goto err;
 	}
 	return retval;
 err:
-	cryptctl_cleanup_model(pair_minor);
+	cryptctl_cleanup_module(filenum);
 	return retval;
 
 }
 
-static int 
-create_crypt_device(int cryptbool, int pair_minor) {
+int 
+create_crypt_device(int cryptbool, int filenum) {
 	int err = 0;
 	struct cryptctl_dev* dev;
 	dev_t devno;
 	struct device *device;
-	dev = &cryptctl_devices[pair_minor];
-	devno = MKDEV(cryptctl_major, pair_minor); 
+	dev = &cryptctl_devices[filenum];
+	devno = MKDEV(cryptctl_major, filenum); 
 	device = NULL;
 	
 	BUG_ON(dev == NULL || cryptctl_class == NULL);
 
 	/* Memory is to be allocated when the device is opened the first time */
-	dev->data = NULL;     
 	dev->buffer_size = CRYPTCTL_BUFFER_SIZE;
 	dev->block_size = CRYPTCTL_BLOCK_SIZE;
 	
@@ -102,25 +95,27 @@ create_crypt_device(int cryptbool, int pair_minor) {
 	if (err)
 	{
 		printk(KERN_WARNING "[target] Error %d while trying to add %s%d",
-			err, "crypt", pair_minor);
+			err, "crypt", filenum);
 		return err;
 	}
 	
+	// create one of the three device types
 	if (cryptbool == 0) {
-		device = device_create(cryptctl_class, NULL, /* no parent device */ 
-			devno, NULL, /* no additional data */
-			ENCRYPT "%d", pair_minor);
+		device = device_create(cryptctl_class, NULL, devno, NULL, ENCRYPT "%d", id);
 	}
+
+	else if (cryptbool == 1) {
+		device = device_create(cryptctl_class, NULL, devno, NULL, DECRYPT "%d", id);
+	}
+
 	else {
-		device = device_create(cryptctl_class, NULL,
-			devno, NULL,
-			DECRYPT "%d", pair_minor);
+		device = device_create(cryptctl_class, NULL, devno, NULL, "cryptctl");
 	}
 
 	if (IS_ERR(device)) {
 		err = PTR_ERR(device);
 		printk(KERN_WARNING "[target] Error %d while trying to create %s%d",
-			err, "crypt", pair_minor);
+			err, "crypt", filenum);
 		cdev_del(&dev->cdev);
 		return err;
 	}
@@ -128,38 +123,54 @@ create_crypt_device(int cryptbool, int pair_minor) {
 }
 
 
-int device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param) {
+long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param) {
 
-	int retval;
+	struct cryptctl_dev *dev;
+	long retval;
+	int num;
 	retval = 0;
 	switch (ioctl_num) {
 		case IOCTL_CREATE:
-			if (create_device_pair() != 0) {
+			if (((2 * id) + 1) > cryptctl_ndevices) {
+				printk(KERN_ALERT "Too many id pairs existing");
+				return -1;
+			} 
+			if ((retval = create_device_pair()) != 0) {
 				printk(KERN_ALERT "Error creating device pair");
 				return retval;
 			}
 			retval = id;
 			//TODO: set key for the device (gotten from ioctl_param)
-			
+						
 			id++;
 			break;
 
 		case IOCTL_DESTROY:
+			// TODO: check if value is acceptable (pair id exists) better
 			
+			if (ioctl_param > id) {
+				printk(KERN_ALERT "Attempted to delete a pair which hasn't been created");
+				return -1;
+			}
+
+			num = (2 * (int)ioctl_param) + 1;
+			dev = &cryptctl_devices[num];
+			cryptctl_destroy_device(dev, num);
+			
+			num++;
+			dev = &cryptctl_devices[num];
+			cryptctl_destroy_device(dev, num);
 			break;
+
 	}
 	return retval;
 }
 
-static void
-cryptctl_destroy_device(struct cryptctl_dev *dev, int minor,
-	struct class *class)
+void cryptctl_destroy_device(struct cryptctl_dev *dev, int filenum)
 {
 	BUG_ON(dev == NULL || cryptctl_class == NULL);
-	device_destroy(class, MKDEV(cryptctl_major, minor));
+	device_destroy(cryptctl_class, MKDEV(cryptctl_major, filenum));
 	cdev_del(&dev->cdev);
-	kfree(dev->data);
-	mutex_destroy(&dev->cryptctl_mutex);
 	return;
 }
 
@@ -171,7 +182,7 @@ cryptctl_cleanup_module(int devices_to_destroy)
 	/* Get rid of character devices (if any exist) */
 	if (cryptctl_devices) {
 		for (i = 0; i < devices_to_destroy; ++i) {
-			cryptctl_destroy_device(&cryptctl_devices[i], i, cryptctl_class);
+			cryptctl_destroy_device(&cryptctl_devices[i], i);
 		}
 		kfree(cryptctl_devices);
 	}
@@ -191,7 +202,7 @@ cryptctl_init_module(void)
 {
 	struct cryptctl_dev *cryptdev;
 	int err = 0;
-	struct device *device = NULL;
+	//struct device *device = NULL;
 	dev_t dev = 0;
 	id = 0;
 	cryptdev = NULL;
@@ -228,12 +239,21 @@ cryptctl_init_module(void)
 		goto fail;
 	}
 	
+	// create cryptctl file (cryptctl creation == 0, index 0)
+	if ((err = create_crypt_device(2, 0)) != 0) {
+		goto fail;
+	}
 	/* Construct devices */
 	
-	BUG_ON(cryptdev == NULL || cryptctl_class == NULL);
+	//BUG_ON(cryptdev == NULL || cryptctl_class == NULL);
 
-	cryptdev = &cryptctl_devices[0];
+
+	//cryptdev = &cryptctl_devices[0];
+
+
 	/* Memory is to be allocated when the device is opened the first time */
+
+	/*
 	cryptdev->data = NULL;     
 	cryptdev->buffer_size = CRYPTCTL_BUFFER_SIZE;
 	cryptdev->block_size = CRYPTCTL_BLOCK_SIZE;
@@ -249,9 +269,7 @@ cryptctl_init_module(void)
 		goto fail;
 	}
 
-	device = device_create(cryptctl_class, NULL, /* no parent device */ 
-		dev, NULL, /* no additional data */
-		DEVICE_NAME "%d", 0);
+	device = device_create(cryptctl_class, NULL, dev, NULL, DEVICE_NAME "%d", 0);
 
 	if (IS_ERR(device)) {
 		err = PTR_ERR(device);
@@ -260,6 +278,7 @@ cryptctl_init_module(void)
 		cdev_del(&cryptdev->cdev);
 		goto fail;
 	}
+	*/
 	return 0; /* success */
 
 fail:
