@@ -37,8 +37,8 @@ static struct cryptctl_dev *cryptctl_devices = NULL;
 static struct class *cryptctl_class = NULL;
 static int id;
 
-
-
+int device_open(struct inode* inode, struct file* filp);
+int device_close(struct inode* inode, struct file* filp);
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param);
 static int create_crypt_device(int cryptbool, int pair_minor);
 static void cryptctl_destroy_device(struct cryptctl_dev *dev, int filenum);
@@ -46,8 +46,20 @@ static void cryptctl_cleanup_module(int filenum);
 
 struct file_operations cryptctl_fops = {
 	.owner = THIS_MODULE,
-	.unlocked_ioctl = device_ioctl
+	.unlocked_ioctl = device_ioctl,
+	.open = device_open, 
+	.release = device_close
 };
+
+int device_open(struct inode* inode, struct file* filp) {
+	printk(KERN_INFO "device was opened");
+	return 0;
+}
+
+int device_close(struct inode* inode, struct file* filp) {
+	printk(KERN_INFO "closed device");
+	return 0;
+}
 
 int
 create_device_pair(void)
