@@ -3,12 +3,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define DEVICE "/dev/TestingDriver"
+#define MAIN_DEVICE "/dev/cryptctl"
+#define ENCRYPT_DEVICE "/dev/cryptEncrypt"
+#define DECRYPT_DEVICE "/dev/cryptDecrypt"
+
 
 int main(){
 
-	int i, fd;
-	char ch, write_buf[100], read_buf[100];
+	int i, fd, fdtemp;
+	char ch, key_buff[100], write_buf[1000], read_buf[1000];
 
 	fd = open(DEVICE,O_RDWR);
 
@@ -16,9 +19,25 @@ int main(){
 		printf("file %s DNE or is locked \n", DEVICE);
 		exit(-1);
 	}
+	
 	printf ("r = read from device \n w = write to device \n enter command: ");
 	scanf("%c", &ch);
-	
+	/*
+		Let's plan this out. I mean really I would like the following to be the flow:
+
+		ioctl call to return number of pairs available:
+		if zero: would you like to create a new pair. Now we have E0 D0.
+
+		C create, D destory, set key, encrypt, decrypt.
+		Create, returns id# of created pair
+		Destroy, returns id# of destroyed pair
+		Set key: give id# of key to set, edit key, thats it. no return necessary.
+		Encrypt: give ID number, and give message. return encrypted message.
+		Decrypt: give ID,  return decrypted message. 
+
+
+
+	*/
 	switch (ch){
 		case 'w':
 			printf("enter data: ");
