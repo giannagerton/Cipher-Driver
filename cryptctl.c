@@ -24,9 +24,17 @@ int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num,
 			temp = (char*)ioctl_param; // key
 			// read the key
 			// create the files with the key
-			if (request_module("cryptEncrypt") != 0) {
+			if (request_module("cryptEncrypt%d",file_num) != 0) {
+				//actually create the file
 			}
-			
+			//do this for decrypt
+			//same for key
+
+
+						
+
+
+
 			// done creating files
 			retval = file_num;
 			file_num++;
