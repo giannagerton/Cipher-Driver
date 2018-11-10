@@ -6,7 +6,13 @@
 #include <linux/semaphore.h>
 #include <linux/moduleparam.h>
 #include <linux/uaccess.h>
-
+#include <linux/device.h>
+#include <linux/ctype.h>
+#include <linux/string.h>
+#include <linux/sched.h>
+#include <linux/cred.h>
+#include <linux/version.h>
+#include <linux/kdev_t.h>
 #include "cryptctl.h"
 
 #define MAX_FILES 100
@@ -15,12 +21,11 @@
 struct fake_device {
 	char data[100];
 	char* device_key;
-	struct semaphore sem;
 } virtual_device;
 
 struct file_operations fops;
 
-struct cdev* mcdev_arr[MAX_FILES];
+struct cdev mcdev_arr[MAX_FILES];
 int major_number;
 int ret;
 static struct class* c1;
@@ -32,7 +37,9 @@ int create_device_pair(void);
 int create_crypt_device(char* text, int filenum);
 int destroy_device_pair(int id);
 
-#define DEVICE_NAME "cryptdriver"
+#define DEVICE_NAME "cryptdriver4"
+
+MODULE_LICENSE("GPL");
 
 int device_ioctl(struct inode* inode, struct file* file, unsigned int ioctl_num, unsigned long ioctl_param) {
 	int id;
@@ -65,20 +72,24 @@ int create_device_pair(void) {
 		return -1;
 	}
 	filenum = (PAIR_SIZE * id); 
-	sprintf(text, "cryptEncrypt%d", id);
+	text = "cryptEncrypt0";
 	create_crypt_device(text, filenum);
 
 	filenum++;
-	sprintf(text, "cryptDecrypt%d", id);
+	text = "cryptDecrypt0";
+	create_crypt_device(text, filenum);
+
+	filenum++;
+	text = "cryptKey0";
 	create_crypt_device(text, filenum);
 	return 0;
 }
 
 int create_crypt_device(char* text, int filenum) {
 	dev_t curr_dev;
-	cdev_init(mcdev_arr[filenum], &fops);
+	cdev_init(&mcdev_arr[filenum], &fops);
 	curr_dev = MKDEV(MAJOR(dev_num), MINOR(dev_num) + filenum);
-	cdev_add(mcdev_arr[filenum], curr_dev, 1);
+	cdev_add(&mcdev_arr[filenum], curr_dev, 1);
 	if (device_create(c1, NULL, curr_dev, NULL,  text) == NULL) {
 		printk(KERN_ALERT "could not create device file");
 		return -1;
@@ -89,21 +100,17 @@ int create_crypt_device(char* text, int filenum) {
 int destroy_device_pair(int id) {
 	int filenum;
 	filenum = id * PAIR_SIZE;
-	cdev_del(mcdev_arr[filenum]);
+	cdev_del(&mcdev_arr[filenum]);
 	device_destroy(c1, MKDEV(MAJOR(dev_num), MINOR(dev_num) + filenum));
 	
 	filenum++;
-	cdev_del(mcdev_arr[filenum]);
+	cdev_del(&mcdev_arr[filenum]);
 	device_destroy(c1, MKDEV(MAJOR(dev_num), MINOR(dev_num) + filenum));
 
 	return 0;
 }
 
 int device_open(struct inode* inode, struct file* filp) {
-	if (down_interruptible(&virtual_device.sem) != 0){ 
-		printk(KERN_ALERT "device was unable to lock");
-		return -1;
-	}
 	printk(KERN_INFO "device was opened yerr");
 	return 0;
 }
@@ -122,7 +129,6 @@ ssize_t device_write(struct file* filp, const char* bufSourceData, size_t bufCou
 }
 
 int device_close(struct inode* inode, struct file* filp) {
-	up(&virtual_device.sem);
 	printk(KERN_INFO "Donion rings.");
 	return 0;
 }
@@ -135,8 +141,12 @@ struct file_operations fops = {
 	.read = device_read
 };
 
-static int driver_entry(void) {
+static int __init driver_entry(void) {
+	unregister_chrdev_region(MKDEV(244, 0), MAX_FILES);
+	
+	
 	ret = alloc_chrdev_region(&dev_num, 0, MAX_FILES, DEVICE_NAME);
+	
 	id = 0;
 	if (ret<0) {
 		printk(KERN_ALERT "failed to get major num\n");
@@ -146,27 +156,34 @@ static int driver_entry(void) {
 	printk(KERN_INFO "we got major number: %d ", major_number);
 	
 	printk(KERN_ALERT "\t use \"mknod /dev/%s c %d 0\" for device file", DEVICE_NAME, major_number);
+	if ((c1 = class_create(THIS_MODULE, "cryptctl4")) == NULL) {
+		class_destroy(c1);
+		unregister_chrdev_region(dev_num, 1);
+		return -1;
+	}
 	
-	mcdev_arr[0] = cdev_alloc();
-	mcdev_arr[0]-> ops = &fops;
-	mcdev_arr[0]->owner = THIS_MODULE;
+	if (device_create(c1, NULL, dev_num, NULL, DEVICE_NAME) != 0) {
+		printk(KERN_ALERT "unable to create device");
+		unregister_chrdev_region(dev_num, MAX_FILES);
+		return -1;
+	}
+	cdev_init(&mcdev_arr[0], &fops);	
 
-	sema_init(&virtual_device.sem, 1);
-	ret = cdev_add(mcdev_arr[0], dev_num, 1);
-	
-	c1 = class_create(THIS_MODULE, "cryptctl");
+	ret = cdev_add(&mcdev_arr[0], dev_num, 1);
 	
 	if (ret < 0) {
 		printk(KERN_ALERT "PD unable to add cdev to kernel");
 		return ret;
 	}
+	
+	
 	return 0;
 }
 
-static void driver_exit(void) {
-
-	cdev_del(mcdev_arr[0]);
-
+static void __exit driver_exit(void) {
+	device_destroy(c1, dev_num);
+	cdev_del(&mcdev_arr[0]);
+	class_destroy(c1);
 	unregister_chrdev_region(dev_num, MAX_FILES);
 	printk(KERN_ALERT "yerrr pd just unloaded");
 }
