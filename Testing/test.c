@@ -71,19 +71,22 @@ int device_close(struct inode* inode, struct file* filp) {
 }
 
 ssize_t device_read(struct file* filp, char* bufStoreData,size_t bufCount,loff_t* curOffset){
-        //when user wants to use the device. file ,where, how much, file offset.
+        int ret;
+	//when user wants to use the device. file ,where, how much, file offset.
         printk(KERN_INFO "This driver's reading from the device now.");
-
+	
         //(destination, source, sizetoTransfer
-        ret = copy_to_user(bufStoreData, cryptctl_devices[1].key,bufCount);
+	ret = copy_to_user(bufStoreData, (&cryptctl_devices[1])->key,bufCount);
+	printk(KERN_ALERT "The value is %s", (&cryptctl_devices[1])->key);
         return ret;
 }
 
         //when sending data to the device
 ssize_t device_write(struct file* filp, const char* bufSourceData, size_t bufCount, loff_t* curOffset){
-        printk(KERN_INFO "driver is writing to device");
+        int ret;
+	 printk(KERN_INFO "driver is writing to device");
         //(destination, source, count)
-        ret = copy_from_user(virtual_device.data, bufSourceData,bufCount);
+        ret = copy_from_user((&cryptctl_devices[1])->message, bufSourceData,bufCount);
         return ret;
 
 }
@@ -165,9 +168,10 @@ create_crypt_device(int cryptbool, int filenum) {
 
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param) {
 
-	struct cryptctl_dev *dev;
+	struct cryptctl_dev *dev, *dev2;
 	long retval;
-	int num;
+	struct idKey *keyStruct;
+	int num, i;
 	retval = 0;
 	switch (ioctl_num) {
 		case IOCTL_CREATE:
@@ -202,6 +206,24 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 			cryptctl_destroy_device(dev, num);
 			break;
 
+		case IOCTL_KEY:
+			
+			keyStruct = (struct idKey*)ioctl_param;
+			num = keyStruct->id;
+			printk(KERN_ALERT "%d",	num);
+			num = (2 * num) + 1;
+			printk(KERN_ALERT "the key is %s", keyStruct->key);
+			dev = &cryptctl_devices[num];
+			num++;
+			dev2 = &cryptctl_devices[num];
+			for (i = 0; i < KEY_SIZE; i++) {
+				dev->key[i] = keyStruct->key[i];
+				dev2->key[i] = keyStruct->key[i];
+			}			
+			retval = 0;
+			printk(KERN_ALERT "Got here");
+			printk(KERN_ALERT "Value is %s", (&cryptctl_devices[1])->key);
+			break;
 	}
 	return retval;
 }

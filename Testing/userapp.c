@@ -12,7 +12,6 @@
 #define ENCRYPT_DEVICE "/dev/cryptEncrypt"
 #define DECRYPT_DEVICE "/dev/cryptDecrypt"
 
-#define IOCTL_KEY 1
 
 int ioctl_create(int file_desc) {
 
@@ -41,15 +40,18 @@ int ioctl_destroy(int file_desc, int id){
 int ioctl_key(int file_desc, int id, char buff[KEY_SIZE]){
 
 	struct idKey param;
+//	param.id = id;
 	param.id = id;
 	strcpy(param.key, buff);
 	int ret_val;
-	ret_val = ioctl(file_desc, IOCTL_KEY, param);
+	ret_val = ioctl(file_desc, IOCTL_KEY, &param);
 	if(ret_val != 0){
 		printf("failed to change key");
+		return -1;
 	}				
 	
 	printf("key is now set.");
+	return ret_val;
 }
 
 
@@ -107,7 +109,8 @@ int main(){
 				read(fd, key_buf, sizeof(key_buf));
 				printf("%s \n", key_buf);
 				//write(fd, write_buf, sizeof(write_buf));
-                        	break;
+                        	
+				break;
 	                case 'n':
  				printf("Enter the ID number: \n");
 				scanf("%d", &i);
