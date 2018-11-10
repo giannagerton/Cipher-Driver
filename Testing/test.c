@@ -134,11 +134,40 @@ create_crypt_device(int cryptbool, int filenum) {
 	return 0;
 }
 
+//  seths the key for a device at the specified filenum (ex: 1 = encrypt0, 2 = decrypt0
+int set_key_for_device(struct idKey keyStruct, int filenum) {
+	struct cryptctl_dev *dev;
+	int i;
+	dev = &cryptctl_devices[filenum];
+	if (dev == NULL) {
+		printk(KERN_ALERT "Failed to create key");
+		return -1;
+	}
+	for (i = 0; i < KEY_SIZE; i++) {
+		dev->key[i] = keyStruct.key[i];
+	}
+	return 0;
+}
+
+int set_key_for_pair(struct idKey keyStruct) {
+	int filenum, retval;
+	filenum = (2 * keyStruct.id) + 1;
+	if ((retval = set_key_for_device(keyStruct, filenum)) != 0) {
+		return -1;
+	}
+	filenum++;
+	if ((retval = set_key_for_device(keyStruct, filenum)) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
 
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param) {
 
 	struct cryptctl_dev *dev;
 	long retval;
+	struct idKey keyStruct;
 	int num;
 	retval = 0;
 	switch (ioctl_num) {
@@ -172,6 +201,15 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 			num++;
 			dev = &cryptctl_devices[num];
 			cryptctl_destroy_device(dev, num);
+			break;
+
+		case IOCTL_KEY:
+			retval = copy_from_user(&keyStruct, (struct idKey*)ioctl_param, sizeof(struct idKey));
+			if (retval != 0) {
+				printk(KERN_ALERT "Could not get ioctl_param correctly");
+				return -1;
+			}
+			retval = set_key_for_pair(keyStruct);
 			break;
 
 	}
