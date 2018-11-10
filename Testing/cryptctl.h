@@ -23,6 +23,7 @@ struct idBuff {
 #define IOCTL_CREATE _IOR(MAGIC_NUM, 0, int)
 #define IOCTL_DESTROY _IOW(MAGIC_NUM, 1, int)  
 #define IOCTL_KEY _IOW(MAGIC_NUM, 2, struct idKey)
-
+#define IOCTL_ENCRYPT _IOWR(MAGIC_NUM, 3, struct idBuff)
+#define IOCTL_DECRYPT _IOWR(MAGIC_NUM, 4, struct idBuff)
 
 #endif

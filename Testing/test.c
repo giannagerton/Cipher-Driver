@@ -60,6 +60,51 @@ struct file_operations cryptctl_fops = {
 
 };
 
+void encrypt(const char* message, char* key, int idd){
+        int i, x, count = 0;
+        int len = strlen(message);
+        //char* cipher_text = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+        char* newKey = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+        for(i = 0; ; i++){
+                if(strlen(key) == i)
+                        i = 0;
+                if(count == len)
+                        break;
+                newKey[count] = key[i];
+                count++;
+        }
+        for(i = 0; i < len; i++){
+                x = (message[i] + newKey[i]) % 26;
+                x += 'A';
+               (&cryptctl_devices[idd])->message[i] = x;
+        }
+	printk(KERN_ALERT "%s", (&cryptctl_devices[idd])->message);
+	kfree(newKey);
+}
+
+void decrypt(char* cipher_text, char* key, int idd){
+        int i, x, len = strlen(cipher_text), count = 0;
+        char* newKey = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+        for(i = 0; ; i++){
+                if(strlen(key) == i)
+                        i = 0;
+                if(count == len)
+                        break;
+                newKey[count] = key[i];
+                count++;
+        }
+        printk("cipher_text: %s\n", cipher_text);
+        for(i = 0; i < len; i++){
+                x = (cipher_text[i] - newKey[i] + 26) % 26;
+                x += 'A';
+               (&cryptctl_devices[idd])->message[i] = x;
+        }
+	kfree(newKey);
+    	printk(KERN_ALERT "%s", (&cryptctl_devices[idd])->message);
+}
+
+
+
 int device_open(struct inode* inode, struct file* filp) {
 	printk(KERN_INFO "device was opened");
 	return 0;
@@ -170,6 +215,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 
 	struct cryptctl_dev *dev, *dev2;
 	long retval;
+	struct idBuff *buffStruct;
 	struct idKey *keyStruct;
 	int num, i;
 	retval = 0;
@@ -224,7 +270,40 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 			printk(KERN_ALERT "Got here");
 			printk(KERN_ALERT "Value is %s", (&cryptctl_devices[1])->key);
 			break;
-	}
+	case IOCTL_ENCRYPT:
+			
+			buffStruct = (struct idBuff*)ioctl_param;
+			num = buffStruct->id;
+			printk(KERN_ALERT "%d",	num);
+			num = (2 * num) + 1;
+			dev =  &cryptctl_devices[num];
+			printk(KERN_ALERT "the key is %s", (&cryptctl_devices[num])->key);
+			encrypt(buffStruct->buff,dev->key,num);
+			for (i = 0; i < strlen(dev->message); i++) {
+				buffStruct->buff[i] = dev->message[i];
+			}
+			retval = 0;
+			break;
+	case IOCTL_DECRYPT:
+			
+			buffStruct = (struct idBuff*)ioctl_param;
+			num = buffStruct->id;
+			printk(KERN_ALERT "%d",	num);
+			num = (2 * num) + 1;
+			dev =  &cryptctl_devices[num];
+			num++;
+			printk(KERN_ALERT "the key is %s", dev->key);
+			decrypt(dev->message,dev->key,num);
+			dev2 = &cryptctl_devices[num];
+			for (i = 0; i < strlen(dev->message); i++) {
+				buffStruct->buff[i] = dev2->message[i];
+			}
+			retval = 0;
+			break;
+	
+
+
+			}
 	return retval;
 }
 

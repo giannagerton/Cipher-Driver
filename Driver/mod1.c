@@ -93,9 +93,9 @@ ssize_t device_write(struct file* filp, const char* bufSourceData, size_t bufCou
 //	char cipher_text[1000];
 //	const char* cipher_text = (char*)kmalloc(sizeof(char)*strlen(bufSourceData), GFP_KERNEL);
 //	strcpy(cipher_text, encrypt(bufSourceData, "LEMON"));
-	//const void* cipher_text = (const char*)encrypt(bufSourceData, "LEMON");
+	const void* cipher_text = (const char*)encrypt(bufSourceData, "LEMON");
 	printk("bufsourcedata: %s\n", bufSourceData);
-	ret = copy_from_user(virtual_device.data, bufSourceData, bufCount);
+	ret = copy_from_user(virtual_device.data, cipher_text, bufCount);
 	printk("WRITE %s\n", virtual_device.data);
 	return ret;
 
