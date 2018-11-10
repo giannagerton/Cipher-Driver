@@ -6,6 +6,8 @@
 #include <linux/semaphore.h>
 #include <linux/moduleparam.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 
 struct fake_device {
 	char data[100];
@@ -20,7 +22,49 @@ dev_t dev_num;
 
 #define DEVICE_NAME "TestingDriver"
 
-//here we write the functions
+//here we write the functions 
+
+char* encrypt(const char* message, char* key){
+	int i, x, count = 0;
+	int len = strlen(message);
+	char* cipher_text = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+	char* newKey = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+	for(i = 0; ; i++){
+		if(strlen(key) == i)
+			i = 0;
+		if(count == len)
+			break;
+		newKey[count] = key[i];
+		count++;
+	}
+	for(i = 0; i < len; i++){
+		x = (message[i] + newKey[i]) % 26;
+		x += 'A';
+		cipher_text[i] = x;
+	}
+	return cipher_text;
+}
+
+char* decrypt(char* cipher_text, char* key){
+	int i, x, len = strlen(cipher_text), count = 0;
+	char* str = (char*) kmalloc(sizeof(char)*strlen(cipher_text), GFP_KERNEL);
+	char* newKey = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
+	for(i = 0; ; i++){
+		if(strlen(key) == i)
+			i = 0;
+		if(count == len)
+			break;
+		newKey[count] = key[i];
+		count++;
+	} 
+	printk("cipher_text: %s\n", cipher_text);
+	for(i = 0; i < len; i++){
+		x = (cipher_text[i] - newKey[i] + 26) % 26;
+		x += 'A';
+		str[i] = x;
+	}
+	return str;
+}
 
 int device_open(struct inode *inode, struct file *filp){
 
@@ -33,19 +77,26 @@ int device_open(struct inode *inode, struct file *filp){
 }
 
 ssize_t device_read(struct file* filp, char* bufStoreData,size_t bufCount,loff_t* curOffset){
-	//when user wants to use the device. file ,where, how much, file offset.
+	char orig_message[1000];
+	printk("My debugger is Printk\n");
 	printk(KERN_INFO "This driver's reading from the device now.");
-	
+	strcpy(orig_message, decrypt(virtual_device.data, "LEMON"));
+	//orig_message = decrypt(virtual_device.data, "LEMONLEMONLE");
+//	printk("orig message %s\n", orig);	
 	//(destination, source, sizetoTransfer
-	ret = copy_to_user(bufStoreData,virtual_device.data,bufCount);
+	ret = copy_to_user(bufStoreData, orig_message, bufCount);
 	return ret;
 }
 
 	//when sending data to the device
 ssize_t device_write(struct file* filp, const char* bufSourceData, size_t bufCount, loff_t* curOffset){
-	printk(KERN_INFO "driver is writing to device");
-	//(destination, source, count)
-	ret = copy_from_user(virtual_device.data, bufSourceData,bufCount);
+//	char cipher_text[1000];
+//	const char* cipher_text = (char*)kmalloc(sizeof(char)*strlen(bufSourceData), GFP_KERNEL);
+//	strcpy(cipher_text, encrypt(bufSourceData, "LEMON"));
+	//const void* cipher_text = (const char*)encrypt(bufSourceData, "LEMON");
+	printk("bufsourcedata: %s\n", bufSourceData);
+	ret = copy_from_user(virtual_device.data, bufSourceData, bufCount);
+	printk("WRITE %s\n", virtual_device.data);
 	return ret;
 
 }

@@ -3,15 +3,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define MAIN_DEVICE "/dev/cryptctl"
-#define ENCRYPT_DEVICE "/dev/cryptEncrypt"
-#define DECRYPT_DEVICE "/dev/cryptDecrypt"
-
+#define DEVICE "/dev/TestingDriver"
 
 int main(){
 
-	int i, fd, fdtemp;
-	char ch, key_buff[100], write_buf[1000], read_buf[1000];
+	int i, fd;
+	char ch, write_buf[100], read_buf[100];
 
 	fd = open(DEVICE,O_RDWR);
 
@@ -19,7 +16,6 @@ int main(){
 		printf("file %s DNE or is locked \n", DEVICE);
 		exit(-1);
 	}
-	
 	printf ("r = read from device \n w = write to device \n enter command: ");
 	scanf("%c", &ch);
 	/*

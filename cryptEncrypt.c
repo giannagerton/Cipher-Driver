@@ -27,8 +27,6 @@ static int device_init(void) {
 
 	int retval = 0;
 	retval = alloc_chrdev_region(&dev_num,0,1, DEVICE_NAME);
-	
-
 }	
 
 
