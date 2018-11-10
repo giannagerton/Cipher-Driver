@@ -22,21 +22,7 @@ dev_t dev_num;
 
 #define DEVICE_NAME "TestingDriver"
 
-//here we write the functions
-char* generateKey(int len, char* key){
-	int i;
-	char* newKey = (char*) kmalloc(sizeof(char)*len, GFP_KERNEL);
-	strcpy(newKey, key);
-	for(i = 0; ; i++){
-		if(strlen(key) == i)
-			i = 0;
-		if(strlen(newKey) == len)
-			break;
-		newKey[strlen(newKey)] = key[i];
-	}
-
-	return newKey;
-}
+//here we write the functions 
 
 char* encrypt(const char* message, char* key){
 	int i, x, count = 0;

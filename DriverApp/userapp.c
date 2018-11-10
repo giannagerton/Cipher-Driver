@@ -18,7 +18,22 @@ int main(){
 	}
 	printf ("r = read from device \n w = write to device \n enter command: ");
 	scanf("%c", &ch);
-	
+	/*
+		Let's plan this out. I mean really I would like the following to be the flow:
+
+		ioctl call to return number of pairs available:
+		if zero: would you like to create a new pair. Now we have E0 D0.
+
+		C create, D destory, set key, encrypt, decrypt.
+		Create, returns id# of created pair
+		Destroy, returns id# of destroyed pair
+		Set key: give id# of key to set, edit key, thats it. no return necessary.
+		Encrypt: give ID number, and give message. return encrypted message.
+		Decrypt: give ID,  return decrypted message. 
+
+
+
+	*/
 	switch (ch){
 		case 'w':
 			printf("enter data: ");
