@@ -1,4 +1,4 @@
-obj-m += test.o
+obj-m += cryptctl.o
 
 KDIR = /usr/src/linux-headers-$(shell uname -r)
 
