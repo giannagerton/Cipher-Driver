@@ -44,11 +44,20 @@ static int create_crypt_device(int cryptbool, int pair_minor);
 static void cryptctl_destroy_device(struct cryptctl_dev *dev, int filenum);
 static void cryptctl_cleanup_module(int filenum);
 
+
+ssize_t device_read(struct file*, char* bufStoreData,size_t,loff_t*);
+
+ssize_t device_write(struct file*, const char* , size_t, loff_t*);
+
+
 struct file_operations cryptctl_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = device_ioctl,
 	.open = device_open, 
-	.release = device_close
+	.release = device_close,
+	.read = device_read,
+	.write = device_write
+
 };
 
 int device_open(struct inode* inode, struct file* filp) {
@@ -60,6 +69,25 @@ int device_close(struct inode* inode, struct file* filp) {
 	printk(KERN_INFO "closed device");
 	return 0;
 }
+
+ssize_t device_read(struct file* filp, char* bufStoreData,size_t bufCount,loff_t* curOffset){
+        //when user wants to use the device. file ,where, how much, file offset.
+        printk(KERN_INFO "This driver's reading from the device now.");
+
+        //(destination, source, sizetoTransfer
+        ret = copy_to_user(bufStoreData, cryptctl_devices[1].key,bufCount);
+        return ret;
+}
+
+        //when sending data to the device
+ssize_t device_write(struct file* filp, const char* bufSourceData, size_t bufCount, loff_t* curOffset){
+        printk(KERN_INFO "driver is writing to device");
+        //(destination, source, count)
+        ret = copy_from_user(virtual_device.data, bufSourceData,bufCount);
+        return ret;
+
+}
+
 
 int
 create_device_pair(void)

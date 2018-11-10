@@ -102,14 +102,18 @@ int main(){
 				printf("enter key (Max 100 characters): ");
                 	        scanf(" %[^\n]", key_buf);
 				ioctl_key(fd,i, key_buf);
-                       		//write(fd, write_buf, sizeof(write_buf));
+                       		
+				printf("The key value you've stores is: \n");
+				read(fd, key_buf, sizeof(key_buf));
+				printf("%s \n", key_buf);
+				//write(fd, write_buf, sizeof(write_buf));
                         	break;
 	                case 'n':
  				printf("Enter the ID number: \n");
 				scanf("%d", &i);
 				printf("enter message (max 1000 characters):\n ");
                 	        scanf(" %[^\n]", write_buf);
-			       // ioctl_encrypt(fd, i, write_buf);
+			        // ioctl_encrypt(fd, i, write_buf);
 				
 				fdtemp = open(ENCRYPT_DEVICE "%d",i, O_RDWR);
 				read(fdtemp,read_buf, sizeof(read_buf));
